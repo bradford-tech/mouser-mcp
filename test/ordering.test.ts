@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { DailyLimitError } from "../src/limiter.js";
 import { PreviewStore } from "../src/previews.js";
 import { fakeMouser, type OrderBody } from "./fake-order-api.js";
 import { connect, type ElicitAnswer } from "./harness.js";
@@ -283,4 +284,32 @@ test("a failed submit call says the order may or may not have been placed", asyn
   assert.equal(result.isError, true);
   assert.match(text(result), /may or may not have been placed/i);
   assert.match(text(result), /get_order_history|mouser\.com/);
+});
+
+test("hitting the daily limit at submission says nothing was submitted", async () => {
+  const mouser = fakeMouser();
+  let calls = 0;
+  const limiter = {
+    schedule<T>(fn: () => Promise<T>): Promise<T> {
+      calls++;
+      // preview: cart + preview (2); submit: cart + fresh preview (2), then
+      // cart again on re-entry (1); the sixth call is the submission itself.
+      if (calls === 6)
+        return Promise.reject(new DailyLimitError("Daily limit reached."));
+      return fn();
+    },
+  };
+  const client = await connect(
+    { mouser: mouser.client, ordersEnabled: true, limiter },
+    { elicit: word("APPROVE") },
+  );
+  const previewId = await preview(client);
+  const result = await client.callTool({
+    name: "submit_order",
+    arguments: { previewId },
+  });
+  assert.equal(result.isError, true);
+  assert.equal(mouser.submits().length, 0);
+  assert.match(text(result), /Nothing was submitted/);
+  assert.doesNotMatch(text(result), /may or may not/);
 });

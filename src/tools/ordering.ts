@@ -14,6 +14,7 @@ import {
 import * as z from "zod/v4";
 import { CONFIRMATION_WORD, isApprove } from "../confirm.js";
 import { canElicitForm } from "../elicitation.js";
+import { DailyLimitError } from "../limiter.js";
 import { callMouser, MouserError, toToolError } from "../mouser.js";
 import {
   PREVIEW_TTL_MINUTES,
@@ -323,8 +324,14 @@ export function registerOrderingTools(
         };
         return ok(structured, JSON.stringify(structured));
       } catch (err) {
-        // The submission may have reached Mouser even though we got no
-        // confirmation; never invite a blind retry that could order twice.
+        // The local limiter refuses before anything is sent: certainly not placed.
+        if (err instanceof DailyLimitError) {
+          return fail(
+            `${err.message} Nothing was submitted; preview the order again once the limit resets.`,
+          );
+        }
+        // Otherwise the submission may have reached Mouser even though we got
+        // no confirmation; never invite a blind retry that could order twice.
         const reason = err instanceof Error ? err.message : String(err);
         return fail(OUTCOME_UNKNOWN(reason));
       }
