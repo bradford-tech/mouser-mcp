@@ -1,0 +1,11 @@
+# https://prettier.io/docs/ignore
+# By default prettier ignores files in version control systems directories:
+# (".git", ".jj", ".sl", ".svn" and ".hg") and node_modules
+# Prettier will also follow rules specified in the ".gitignore" file
+CHANGELOG.md
+
+# local-only (excluded via .git/info/exclude)
+.claude
+.superpowers
+docs/superpowers
+.mcp.json

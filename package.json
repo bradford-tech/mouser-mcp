@@ -1,7 +1,14 @@
 {
-  "name": "mouser-mcp",
+  "name": "@bradford-tech/mouser-mcp",
   "version": "0.0.1",
-  "description": "TBD",
+  "description": "MCP server for the Mouser Electronics API: part search, BOM review, carts and confirmed ordering",
+  "keywords": [
+    "mouser",
+    "mcp",
+    "model-context-protocol",
+    "claude",
+    "electronics"
+  ],
   "homepage": "https://github.com/bradford-tech/mouser-mcp#readme",
   "bugs": {
     "url": "https://github.com/bradford-tech/mouser-mcp/issues"
@@ -11,10 +18,47 @@
     "url": "git+https://github.com/bradford-tech/mouser-mcp.git"
   },
   "license": "MIT",
-  "author": "Bradford Technologies",
+  "author": "Bradford Technologies <mouser-mcp@sargent.dev>",
   "type": "module",
-  "main": "index.js",
+  "bin": {
+    "mouser-mcp": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc",
+    "clean": "rimraf dist",
+    "fix": "npm run format -- --write && npm run lint -- --fix && npm run type-check",
+    "format": "prettier . --log-level warn",
+    "lint": "eslint . --quiet --max-warnings 0",
+    "prepack": "npm run build",
+    "test": "node --import jiti/register --test test/*.test.ts",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@bradford-tech/mouser-sdk": "^0.0.1",
+    "@modelcontextprotocol/server": "2.4.0",
+    "zod": "^4.2.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@modelcontextprotocol/client": "2.4.0",
+    "eslint": "^10.14.0",
+    "eslint-config-flat-gitignore": "^2.4.0",
+    "globals": "^17.14.0",
+    "jiti": "^2.7.0",
+    "prettier": "^3.9.10",
+    "prettier-plugin-organize-imports": "^4.3.0",
+    "prettier-plugin-packagejson": "^3.1.0",
+    "rimraf": "^6.1.3",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.72.1"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

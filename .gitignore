@@ -1,0 +1,18 @@
+# dependencies
+node_modules
+
+# build output
+dist
+.test-out
+
+# npm pack output
+*.tgz
+
+# misc
+.DS_Store
+
+# local secrets
+.env
+
+# MCPB bundles
+*.mcpb
