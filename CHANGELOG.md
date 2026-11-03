@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.3](https://github.com/bradford-tech/mouser-mcp/compare/mouser-mcp-v0.0.2...mouser-mcp-v0.0.3) (2026-11-03)
+
+
+### Bug Fixes
+
+* keep release-please's manifest.json formatting from failing CI ([250c081](https://github.com/bradford-tech/mouser-mcp/commit/250c0817cdbab1af99430316e6580753bf661472))
+
 ## [0.0.2](https://github.com/bradford-tech/mouser-mcp/compare/mouser-mcp-v0.0.1...mouser-mcp-v0.0.2) (2026-11-03)
 
 
