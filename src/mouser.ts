@@ -57,3 +57,18 @@ export function toToolError(err: unknown): CallToolResult {
   }
   throw err;
 }
+
+/**
+ * Runs a tool body, turning expected Mouser failures (API errors, missing
+ * keys, the daily limit) into `isError` results the model can act on.
+ * Anything unexpected still throws.
+ */
+export async function tool(
+  body: () => Promise<CallToolResult>,
+): Promise<CallToolResult> {
+  try {
+    return await body();
+  } catch (err) {
+    return toToolError(err);
+  }
+}

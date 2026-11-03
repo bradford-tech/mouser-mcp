@@ -1,9 +1,12 @@
 import type { CallToolResult } from "@modelcontextprotocol/server";
 
-/** A successful tool result: structured data plus a text rendering of it. */
+/**
+ * A successful tool result: structured data plus a text rendering of it
+ * (compact JSON by default, for clients that only show text).
+ */
 export function ok<T extends Record<string, unknown>>(
   structured: T,
-  text: string,
+  text: string = JSON.stringify(structured),
 ): CallToolResult {
   return { content: [{ type: "text", text }], structuredContent: structured };
 }

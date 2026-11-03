@@ -10,7 +10,7 @@ import {
 } from "@bradford-tech/mouser-sdk";
 import type { McpServer } from "@modelcontextprotocol/server";
 import * as z from "zod/v4";
-import { callMouser, toToolError } from "../mouser.js";
+import { callMouser, tool } from "../mouser.js";
 import { pruneObject } from "../prune.js";
 import { fail, ok } from "../results.js";
 import type { ServerDeps } from "../server.js";
@@ -41,7 +41,7 @@ const DATE_FILTERS = [
 /** Mouser's response, minus empty fields, as both structured and text output. */
 function passThrough(data: unknown) {
   const structured = pruneObject(data);
-  return ok(structured, JSON.stringify(structured));
+  return ok(structured);
 }
 
 export function registerOrderInfoTools(
@@ -62,8 +62,8 @@ export function registerOrderInfoTools(
       }),
       annotations: { title: "Get Mouser order options", ...READ_ONLY },
     },
-    async (args) => {
-      try {
+    async (args) =>
+      tool(async () => {
         return passThrough(
           await callMouser(limiter, () =>
             queryOrderOptions({
@@ -79,10 +79,7 @@ export function registerOrderInfoTools(
             }),
           ),
         );
-      } catch (err) {
-        return toToolError(err);
-      }
-    },
+      }),
   );
 
   server.registerTool(
@@ -94,8 +91,8 @@ export function registerOrderInfoTools(
       inputSchema: z.object({ countryCode: z.string().optional() }),
       annotations: { title: "List Mouser countries", ...READ_ONLY },
     },
-    async (args) => {
-      try {
+    async (args) =>
+      tool(async () => {
         return passThrough(
           await callMouser(limiter, () =>
             getCountries({
@@ -104,10 +101,7 @@ export function registerOrderInfoTools(
             }),
           ),
         );
-      } catch (err) {
-        return toToolError(err);
-      }
-    },
+      }),
   );
 
   server.registerTool(
@@ -119,8 +113,8 @@ export function registerOrderInfoTools(
       inputSchema: z.object({ shippingCountryCode: z.string().optional() }),
       annotations: { title: "List Mouser currencies", ...READ_ONLY },
     },
-    async (args) => {
-      try {
+    async (args) =>
+      tool(async () => {
         return passThrough(
           await callMouser(limiter, () =>
             getCurrencies({
@@ -131,10 +125,7 @@ export function registerOrderInfoTools(
             }),
           ),
         );
-      } catch (err) {
-        return toToolError(err);
-      }
-    },
+      }),
   );
 
   server.registerTool(
@@ -164,7 +155,7 @@ export function registerOrderInfoTools(
           "Give exactly one of: dateFilter, startDate and endDate, salesOrderNumber, or webOrderNumber.",
         );
       }
-      try {
+      return tool(async () => {
         if (args.dateFilter !== undefined) {
           const dateFilter = args.dateFilter;
           return passThrough(
@@ -207,9 +198,7 @@ export function registerOrderInfoTools(
             }),
           ),
         );
-      } catch (err) {
-        return toToolError(err);
-      }
+      });
     },
   );
 
@@ -222,16 +211,13 @@ export function registerOrderInfoTools(
       inputSchema: z.object({ orderNumber: z.number().int().positive() }),
       annotations: { title: "Get a Mouser order", ...READ_ONLY },
     },
-    async (args) => {
-      try {
+    async (args) =>
+      tool(async () => {
         return passThrough(
           await callMouser(limiter, () =>
             getOrder({ client, path: { orderNumber: args.orderNumber } }),
           ),
         );
-      } catch (err) {
-        return toToolError(err);
-      }
-    },
+      }),
   );
 }

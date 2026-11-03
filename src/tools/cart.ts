@@ -11,7 +11,7 @@ import {
 } from "@bradford-tech/mouser-sdk";
 import type { McpServer } from "@modelcontextprotocol/server";
 import * as z from "zod/v4";
-import { callMouser, toToolError } from "../mouser.js";
+import { callMouser, tool } from "../mouser.js";
 import { pruneObject } from "../prune.js";
 import { fail, ok } from "../results.js";
 import type { ServerDeps } from "../server.js";
@@ -93,7 +93,7 @@ function toCartItems(items: z.infer<typeof CartItemInput>[]) {
 
 function cartResult(cart: CartResponseRoot) {
   const structured = summarizeCart(cart);
-  return ok(structured, JSON.stringify(structured));
+  return ok(structured);
 }
 
 export function registerCartTools(server: McpServer, deps: ServerDeps): void {
@@ -116,17 +116,14 @@ export function registerCartTools(server: McpServer, deps: ServerDeps): void {
         openWorldHint: true,
       },
     },
-    async (args) => {
-      try {
+    async (args) =>
+      tool(async () => {
         return cartResult(
           await callMouser(limiter, () =>
             getCart({ client, query: { cartKey: args.cartKey } }),
           ),
         );
-      } catch (err) {
-        return toToolError(err);
-      }
-    },
+      }),
   );
 
   server.registerTool(
@@ -148,8 +145,8 @@ export function registerCartTools(server: McpServer, deps: ServerDeps): void {
         openWorldHint: true,
       },
     },
-    async (args) => {
-      try {
+    async (args) =>
+      tool(async () => {
         return cartResult(
           await callMouser(limiter, () =>
             addCartItems({
@@ -161,10 +158,7 @@ export function registerCartTools(server: McpServer, deps: ServerDeps): void {
             }),
           ),
         );
-      } catch (err) {
-        return toToolError(err);
-      }
-    },
+      }),
   );
 
   server.registerTool(
@@ -186,8 +180,8 @@ export function registerCartTools(server: McpServer, deps: ServerDeps): void {
         openWorldHint: true,
       },
     },
-    async (args) => {
-      try {
+    async (args) =>
+      tool(async () => {
         return cartResult(
           await callMouser(limiter, () =>
             updateCartItems({
@@ -199,10 +193,7 @@ export function registerCartTools(server: McpServer, deps: ServerDeps): void {
             }),
           ),
         );
-      } catch (err) {
-        return toToolError(err);
-      }
-    },
+      }),
   );
 
   server.registerTool(
@@ -220,8 +211,8 @@ export function registerCartTools(server: McpServer, deps: ServerDeps): void {
         openWorldHint: true,
       },
     },
-    async (args) => {
-      try {
+    async (args) =>
+      tool(async () => {
         return cartResult(
           await callMouser(limiter, () =>
             removeCartItem({
@@ -233,10 +224,7 @@ export function registerCartTools(server: McpServer, deps: ServerDeps): void {
             }),
           ),
         );
-      } catch (err) {
-        return toToolError(err);
-      }
-    },
+      }),
   );
 
   server.registerTool(
@@ -259,8 +247,8 @@ export function registerCartTools(server: McpServer, deps: ServerDeps): void {
         openWorldHint: true,
       },
     },
-    async (args) => {
-      try {
+    async (args) =>
+      tool(async () => {
         if (args.action === "delete_all") {
           return cartResult(
             await callMouser(limiter, () =>
@@ -289,10 +277,7 @@ export function registerCartTools(server: McpServer, deps: ServerDeps): void {
             ? () => addScheduledCartItems({ client, body })
             : () => updateScheduledCartItems({ client, body });
         return cartResult(await callMouser(limiter, run));
-      } catch (err) {
-        return toToolError(err);
-      }
-    },
+      }),
   );
 
   server.registerTool(
@@ -311,8 +296,8 @@ export function registerCartTools(server: McpServer, deps: ServerDeps): void {
         openWorldHint: true,
       },
     },
-    async (args) => {
-      try {
+    async (args) =>
+      tool(async () => {
         return cartResult(
           await callMouser(limiter, () =>
             createCartFromOrder({
@@ -321,9 +306,6 @@ export function registerCartTools(server: McpServer, deps: ServerDeps): void {
             }),
           ),
         );
-      } catch (err) {
-        return toToolError(err);
-      }
-    },
+      }),
   );
 }

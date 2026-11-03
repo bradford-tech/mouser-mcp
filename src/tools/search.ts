@@ -9,12 +9,7 @@ import {
 import type { McpServer } from "@modelcontextprotocol/server";
 import * as z from "zod/v4";
 import { DailyLimitError } from "../limiter.js";
-import {
-  callMouser,
-  MouserError,
-  toToolError,
-  type MouserClient,
-} from "../mouser.js";
+import { callMouser, MouserError, tool, type MouserClient } from "../mouser.js";
 import { PartSummarySchema, summarizePart } from "../parts.js";
 import { fail, ok } from "../results.js";
 import type { ServerDeps } from "../server.js";
@@ -85,7 +80,7 @@ export function registerSearchTools(server: McpServer, deps: ServerDeps): void {
           `With a manufacturer, offset must be a multiple of limit (e.g. ${Math.floor(offset / limit) * limit} or ${Math.ceil(offset / limit) * limit} for limit ${limit}).`,
         );
       }
-      try {
+      return tool(async () => {
         const searchOptions = SEARCH_OPTIONS[filter ?? "none"];
         const data = manufacturer
           ? await callMouser(limiter, () =>
@@ -122,10 +117,8 @@ export function registerSearchTools(server: McpServer, deps: ServerDeps): void {
           totalResults: data.SearchResults?.NumberOfResult ?? parts.length,
           parts,
         };
-        return ok(structured, JSON.stringify(structured));
-      } catch (err) {
-        return toToolError(err);
-      }
+        return ok(structured);
+      });
     },
   );
 
@@ -227,7 +220,7 @@ export function registerSearchTools(server: McpServer, deps: ServerDeps): void {
           `No part numbers could be looked up: ${failed[0]?.error ?? "unknown error"}`,
         );
       }
-      return ok(structured, JSON.stringify(structured));
+      return ok(structured);
     },
   );
 
@@ -244,8 +237,8 @@ export function registerSearchTools(server: McpServer, deps: ServerDeps): void {
       }),
       annotations: { title: "List Mouser manufacturers", ...READ_ONLY },
     },
-    async ({ query }) => {
-      try {
+    async ({ query }) =>
+      tool(async () => {
         let names = manufacturerCache.get(client);
         if (!names) {
           names = callMouser(limiter, () =>
@@ -266,10 +259,7 @@ export function registerSearchTools(server: McpServer, deps: ServerDeps): void {
           manufacturers: matches.slice(0, MAX_MANUFACTURERS_RETURNED),
           truncated: matches.length > MAX_MANUFACTURERS_RETURNED,
         };
-        return ok(structured, JSON.stringify(structured));
-      } catch (err) {
-        return toToolError(err);
-      }
-    },
+        return ok(structured);
+      }),
   );
 }

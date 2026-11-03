@@ -15,7 +15,7 @@ import * as z from "zod/v4";
 import { CONFIRMATION_WORD, isApprove } from "../confirm.js";
 import { canElicitForm } from "../elicitation.js";
 import { DailyLimitError } from "../limiter.js";
-import { callMouser, MouserError, toToolError } from "../mouser.js";
+import { callMouser, MouserError, tool, toToolError } from "../mouser.js";
 import {
   PREVIEW_TTL_MINUTES,
   type CartLine,
@@ -216,8 +216,8 @@ export function registerOrderingTools(
         openWorldHint: true,
       },
     },
-    async (args) => {
-      try {
+    async (args) =>
+      tool(async () => {
         const request = toOrderRequest(args);
         const cart = await callMouser(limiter, () =>
           getCart({ client, query: { cartKey: args.cartKey } }),
@@ -233,11 +233,8 @@ export function registerOrderingTools(
           expiresInMinutes: PREVIEW_TTL_MINUTES,
           ...summary,
         };
-        return ok(structured, JSON.stringify(structured));
-      } catch (err) {
-        return toToolError(err);
-      }
-    },
+        return ok(structured);
+      }),
   );
 
   server.registerTool(
@@ -322,7 +319,7 @@ export function registerOrderingTools(
           orderNumber: placed.Order?.OrderID,
           ...summarizeOrder(placed.Order),
         };
-        return ok(structured, JSON.stringify(structured));
+        return ok(structured);
       } catch (err) {
         // The local limiter refuses before anything is sent: certainly not placed.
         if (err instanceof DailyLimitError) {
