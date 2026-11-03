@@ -1,6 +1,8 @@
 import { McpServer } from "@modelcontextprotocol/server";
 import type { Limiter } from "./limiter.js";
 import type { MouserClient } from "./mouser.js";
+import { registerCartTools } from "./tools/cart.js";
+import { registerOrderInfoTools } from "./tools/orders.js";
 import { registerSearchTools } from "./tools/search.js";
 
 /**
@@ -30,5 +32,7 @@ export function createServer(deps: ServerDeps): McpServer {
     { instructions: SERVER_INSTRUCTIONS },
   );
   registerSearchTools(server, deps);
+  registerCartTools(server, deps);
+  registerOrderInfoTools(server, deps);
   return server;
 }
