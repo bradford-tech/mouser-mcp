@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "mouser",
   "display_name": "Mouser Electronics",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Search Mouser parts, review BOMs, build carts and (opt-in) place confirmed orders.",
   "long_description": "Part search and BOM review against Mouser's catalog: stock, lead times, lifecycle, RoHS, pricing breaks and compliance codes. Build and edit carts, look up order history. Order placement is off by default; when enabled it requires typing APPROVE into a confirmation prompt shown by the server, which Claude Desktop does not support yet (use Claude Code).",
   "author": {
