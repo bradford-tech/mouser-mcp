@@ -49,7 +49,7 @@ export function registerSearchTools(server: McpServer, deps: ServerDeps): void {
     {
       title: "Search Mouser parts",
       description:
-        "Keyword search of Mouser's catalog, optionally limited to one manufacturer and filtered to in-stock and/or RoHS-compliant parts. Returns the total match count and up to 50 compact part summaries per call; page with offset. Mouser has no parametric filtering or sorting (e.g. by capacitance, voltage or price), so filter by the returned descriptions.",
+        "Keyword search of Mouser's catalog, optionally limited to one manufacturer and filtered to in-stock and/or RoHS-compliant parts. Returns the total match count and up to 50 compact part summaries per call; page with offset (with a manufacturer, offset must be a multiple of limit). Mouser has no parametric filtering or sorting (e.g. by capacitance, voltage or price), so filter by the returned descriptions.",
       inputSchema: z.object({
         keyword: z
           .string()
@@ -79,6 +79,12 @@ export function registerSearchTools(server: McpServer, deps: ServerDeps): void {
       annotations: { title: "Search Mouser parts", ...READ_ONLY },
     },
     async ({ keyword, manufacturer, filter, limit = 10, offset = 0 }) => {
+      // Mouser's manufacturer search pages by page number, not record offset.
+      if (manufacturer && offset % limit !== 0) {
+        return fail(
+          `With a manufacturer, offset must be a multiple of limit (e.g. ${Math.floor(offset / limit) * limit} or ${Math.ceil(offset / limit) * limit} for limit ${limit}).`,
+        );
+      }
       try {
         const searchOptions = SEARCH_OPTIONS[filter ?? "none"];
         const data = manufacturer

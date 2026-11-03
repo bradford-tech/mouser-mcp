@@ -284,3 +284,22 @@ test("get_parts reports every remaining batch as failed once the daily limit is 
     10,
   );
 });
+
+test("search_parts with a manufacturer rejects offsets that aren't a multiple of limit", async () => {
+  const { client: mouser, requests } = mouserWithFetch(() => ({
+    SearchResults: { NumberOfResult: 0, Parts: [] },
+  }));
+  const client = await connect({ mouser });
+  const result = await client.callTool({
+    name: "search_parts",
+    arguments: {
+      keyword: "LDO",
+      manufacturer: "Texas Instruments",
+      limit: 10,
+      offset: 5,
+    },
+  });
+  assert.equal(result.isError, true);
+  assert.match(JSON.stringify(result.content), /multiple of limit/);
+  assert.equal(requests.length, 0);
+});
