@@ -1,0 +1,57 @@
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+name: ci
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - run: npm ci
+
+      - run: npm run format -- --check
+
+      - run: npm run lint
+
+      - run: npm run type-check
+
+      - run: npm test
+
+      - run: npm run build
+
+      - name: Pack server tarball
+        run: npm pack
+
+      - name: Smoke test (installed package over stdio)
+        run: |
+          mkdir -p "$RUNNER_TEMP/smoke"
+          cd "$RUNNER_TEMP/smoke"
+          npm init -y >/dev/null
+          npm install "$GITHUB_WORKSPACE"/bradford-tech-mouser-mcp-*.tgz @modelcontextprotocol/client@2.4.0
+          node "$GITHUB_WORKSPACE/scripts/smoke.mjs" ./node_modules/.bin/mouser-mcp
+
+      - name: Validate and pack MCPB bundle
+        run: |
+          npx -y @anthropic-ai/mcpb@2.1.2 validate manifest.json
+          bash scripts/pack-mcpb.sh
