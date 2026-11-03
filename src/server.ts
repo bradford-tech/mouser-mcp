@@ -1,4 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/server";
+import { createRequire } from "node:module";
 import type { Limiter } from "./limiter.js";
 import type { MouserClient } from "./mouser.js";
 import type { PreviewStore } from "./previews.js";
@@ -19,7 +20,11 @@ export interface ServerDeps {
   previews: PreviewStore;
 }
 
-export const SERVER_VERSION = "0.0.1";
+// package.json sits one level above both src/ (tests) and dist/ (published),
+// so the reported version always matches the released package.
+export const SERVER_VERSION = (
+  createRequire(import.meta.url)("../package.json") as { version: string }
+).version;
 
 export const SERVER_INSTRUCTIONS = [
   "Mouser Electronics part search, BOM review, carts and order history.",

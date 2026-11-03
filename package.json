@@ -32,6 +32,7 @@
     "fix": "npm run format -- --write && npm run lint -- --fix && npm run type-check",
     "format": "prettier . --log-level warn",
     "lint": "eslint . --quiet --max-warnings 0",
+    "live-check": "node --env-file=.env scripts/live-check.mjs",
     "prepack": "npm run build",
     "test": "node --import jiti/register --test test/*.test.ts",
     "type-check": "tsc --noEmit"
