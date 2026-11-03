@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.4](https://github.com/bradford-tech/mouser-mcp/compare/mouser-mcp-v0.0.3...mouser-mcp-v0.0.4) (2026-11-03)
+
+
+### Bug Fixes
+
+* **deps:** depend on mouser-sdk ~0.0.2 (0.0.1 was unpublished) ([313fdc3](https://github.com/bradford-tech/mouser-mcp/commit/313fdc3133ab28e77d706dd8bc8aa41d0f2a98bc))
+
 ## [0.0.3](https://github.com/bradford-tech/mouser-mcp/compare/mouser-mcp-v0.0.2...mouser-mcp-v0.0.3) (2026-11-03)
 
 
