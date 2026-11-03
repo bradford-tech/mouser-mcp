@@ -252,6 +252,8 @@ export function registerOrderingTools(
         idempotentHint: false,
         openWorldHint: true,
       },
+      // Claude Code hint (code.claude.com/docs/en/mcp): ask the user's
+      // permission before every call, even in auto/bypass permission modes.
       _meta: { "anthropic/requiresUserInteraction": true },
     },
     async ({ previewId }, ctx) => {

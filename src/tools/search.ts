@@ -32,8 +32,8 @@ const SEARCH_OPTIONS = {
 const PART_NUMBERS_PER_CALL = 10;
 const MAX_MANUFACTURERS_RETURNED = 200;
 
-// Keyed on the shared Mouser client so the list survives the per-request
-// server instances the MCP SDK creates.
+// Keyed on the shared Mouser client (not the server instance) so the list is
+// fetched once per process however many server instances are built.
 const manufacturerCache = new WeakMap<MouserClient, Promise<string[]>>();
 
 export function registerSearchTools(server: McpServer, deps: ServerDeps): void {

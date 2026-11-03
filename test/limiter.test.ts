@@ -58,13 +58,18 @@ test("a new UTC day resets the daily count", async () => {
   assert.equal(await limiter.schedule(async () => 2), 2);
 });
 
-test("the daily-limit message is user-facing", async () => {
-  const limiter = createLimiter({ ...fakeClock(), perDay: 0 });
+test("the daily-limit message reports the configured limit", async () => {
+  const limiter = createLimiter({
+    ...fakeClock(),
+    perMinute: 10_000,
+    perDay: 2_500,
+  });
+  for (let i = 0; i < 2_500; i++) await limiter.schedule(async () => i);
   await assert.rejects(
-    limiter.schedule(async () => 1),
+    limiter.schedule(async () => 0),
     {
       message:
-        "Mouser's daily API limit (1,000 calls) is reached; try again after midnight UTC.",
+        "Mouser's daily API limit (2,500 calls) is reached; try again after midnight UTC.",
     },
   );
 });

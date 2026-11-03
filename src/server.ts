@@ -10,9 +10,11 @@ import { registerOrderInfoTools } from "./tools/orders.js";
 import { registerSearchTools } from "./tools/search.js";
 
 /**
- * Everything a server instance needs. The MCP SDK builds a fresh server per
- * request, so anything that must persist across calls (the rate limiter,
- * caches, order previews) lives here and is shared by every instance.
+ * Everything a server instance needs. Server lifetime depends on how it is
+ * served: stdio (production) keeps one instance per connection, while the
+ * HTTP handler the tests use builds one per request. So anything that must
+ * persist across calls (the rate limiter, caches, order previews, the prompt
+ * signing key) lives here and is shared by every instance.
  */
 export interface ServerDeps {
   mouser: MouserClient;

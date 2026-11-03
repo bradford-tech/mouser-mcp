@@ -1,4 +1,7 @@
-/** Serializes Mouser calls to stay within Mouser's published API limits. */
+/**
+ * Paces Mouser calls to stay within Mouser's published API limits: slots are
+ * handed out in order, and calls run concurrently once they have one.
+ */
 export interface Limiter {
   schedule<T>(fn: () => Promise<T>): Promise<T>;
 }
@@ -45,7 +48,7 @@ export function createLimiter(
     }
     if (dayCount >= perDay) {
       throw new DailyLimitError(
-        "Mouser's daily API limit (1,000 calls) is reached; try again after midnight UTC.",
+        `Mouser's daily API limit (${perDay.toLocaleString("en-US")} calls) is reached; try again after midnight UTC.`,
       );
     }
     while (recent.length > 0 && now() - (recent[0] ?? 0) >= MINUTE_MS) {
