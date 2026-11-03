@@ -9,3 +9,6 @@ CHANGELOG.md
 .superpowers
 docs/superpowers
 .mcp.json
+
+# Version bumped by release-please, which rewrites the file with its own formatting
+manifest.json
