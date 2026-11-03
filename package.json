@@ -38,7 +38,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@bradford-tech/mouser-sdk": "^0.0.1",
+    "@bradford-tech/mouser-sdk": "~0.0.2",
     "@modelcontextprotocol/server": "2.4.0",
     "zod": "^4.2.0"
   },
