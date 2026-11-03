@@ -31,6 +31,11 @@ export interface Preview {
   summary: OrderSummary;
   createdAt: number;
   state: "pending" | "used";
+  /**
+   * Nonces of the confirmation prompts issued for this preview. Several can be
+   * outstanding (e.g. concurrent calls); `consume` still allows one order.
+   */
+  promptNonces: Set<string>;
 }
 
 /** How long a preview can be submitted. Stated in the preview tool's description. */
@@ -50,13 +55,16 @@ export class PreviewStore {
     this.#now = opts.now ?? Date.now;
   }
 
-  create(input: Omit<Preview, "id" | "createdAt" | "state">): Preview {
+  create(
+    input: Omit<Preview, "id" | "createdAt" | "state" | "promptNonces">,
+  ): Preview {
     this.#sweep();
     const preview: Preview = {
       ...input,
       id: randomBytes(16).toString("base64url"),
       createdAt: this.#now(),
       state: "pending",
+      promptNonces: new Set(),
     };
     this.#previews.set(preview.id, preview);
     return preview;

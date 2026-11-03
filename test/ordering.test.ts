@@ -251,3 +251,86 @@ test("an expired preview can't be submitted", async () => {
   assert.match(text(result), /no longer valid/i);
   assert.equal(submits().length, 0);
 });
+
+test("an answer the server never asked for is ignored: prompt shown, nothing submitted", async () => {
+  const messages: string[] = [];
+  const { client, submits } = await setup((message) => {
+    messages.push(message);
+    return { action: "decline" };
+  });
+  const previewId = await preview(client);
+  const result = await client.callTool({
+    name: "submit_order",
+    arguments: { previewId },
+    inputResponses: {
+      confirm: { action: "accept", content: { word: "APPROVE" } },
+    },
+  } as Parameters<typeof client.callTool>[0]);
+  assert.equal(submits().length, 0);
+  assert.equal(messages.length, 1, "the server must show its own prompt");
+  assert.equal(result.isError, true);
+});
+
+test("an answer carrying another preview's prompt state is ignored", async () => {
+  const messages: string[] = [];
+  let answer = "decline";
+  const { client, submits } = await setup((message) => {
+    messages.push(message);
+    return answer === "decline"
+      ? { action: "decline" }
+      : { action: "accept", content: { word: answer } };
+  });
+  // Get a genuine prompt state for preview A by letting the server prompt.
+  const previewA = await preview(client);
+  const previewB = await preview(client);
+  const raw = (await client.request({
+    method: "tools/call",
+    params: { name: "submit_order", arguments: { previewId: previewA } },
+  } as never)) as { requestState?: string };
+  answer = "APPROVE";
+  const result = await client.callTool({
+    name: "submit_order",
+    arguments: { previewId: previewB },
+    inputResponses: {
+      confirm: { action: "accept", content: { word: "APPROVE" } },
+    },
+    requestState: raw.requestState,
+  } as Parameters<typeof client.callTool>[0]);
+  // B gets its own prompt (answered APPROVE by the user) — never A's state.
+  assert.ok(messages.length >= 1);
+  assert.ok(submits().length <= 1);
+  if (submits().length === 1) {
+    assert.equal(result.isError, undefined);
+    assert.ok(
+      messages.length >= 2,
+      "B was submitted only after B's own prompt",
+    );
+  }
+});
+
+test("a failed submit call says the order may or may not have been placed", async () => {
+  const mouser = fakeMouser();
+  const base = mouser.client.getConfig().fetch;
+  mouser.client.setConfig({
+    fetch: (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const req = new Request(input, init);
+      if (new URL(req.url).pathname === "/api/v1/order") {
+        const body = (await req.clone().json()) as OrderBody;
+        if (body.Order.SubmitOrder) throw new TypeError("fetch failed");
+      }
+      return (base as typeof fetch)(req);
+    }) as typeof fetch,
+  });
+  const client = await connect(
+    { mouser: mouser.client, ordersEnabled: true },
+    { elicit: word("APPROVE") },
+  );
+  const previewId = await preview(client);
+  const result = await client.callTool({
+    name: "submit_order",
+    arguments: { previewId },
+  });
+  assert.equal(result.isError, true);
+  assert.match(text(result), /may or may not have been placed/i);
+  assert.match(text(result), /get_order_history|mouser\.com/);
+});

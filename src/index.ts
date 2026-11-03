@@ -3,6 +3,7 @@ import { client } from "@bradford-tech/mouser-sdk";
 import { serveStdio } from "@modelcontextprotocol/server/stdio";
 import { createLimiter } from "./limiter.js";
 import { PreviewStore } from "./previews.js";
+import { createPromptStateCodec } from "./prompt-state.js";
 import { createServer, SERVER_VERSION, type ServerDeps } from "./server.js";
 
 // Keys come from MOUSER_SEARCH_API_KEY / MOUSER_ORDER_API_KEY via the SDK's
@@ -14,6 +15,7 @@ const deps: ServerDeps = {
   limiter: createLimiter(),
   ordersEnabled: enableOrders === "1" || enableOrders === "true",
   previews: new PreviewStore(),
+  promptState: createPromptStateCodec(),
 };
 
 serveStdio(() => createServer(deps), {

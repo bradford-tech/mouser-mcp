@@ -20,6 +20,7 @@ import {
   type CartLine,
   type OrderSummary,
 } from "../previews.js";
+import { newNonce, type PromptState } from "../prompt-state.js";
 import { pruneObject } from "../prune.js";
 import { fail, ok } from "../results.js";
 import type { ServerDeps } from "../server.js";
@@ -29,6 +30,8 @@ const NO_LONGER_VALID =
 const NEEDS_PROMPT =
   "Order submission needs a client that can show a confirmation prompt, such as Claude Code in interactive mode. Nothing was submitted. You can also place this order from the cart on mouser.com.";
 const NOT_APPROVED = `Not approved — nothing was submitted. The order is placed only when ${CONFIRMATION_WORD} is typed into the confirmation prompt. Preview the order again to retry.`;
+const OUTCOME_UNKNOWN = (reason: string) =>
+  `Mouser did not confirm the order (${reason}). It may or may not have been placed — check get_order_history or your orders on mouser.com before trying again.`;
 const CART_CHANGED =
   "The cart changed since this preview, so nothing was submitted. Preview the order again.";
 
@@ -185,7 +188,7 @@ export function registerOrderingTools(
   server: McpServer,
   deps: ServerDeps,
 ): void {
-  const { mouser: client, limiter, previews } = deps;
+  const { mouser: client, limiter, previews, promptState } = deps;
 
   async function previewOrder(request: OrderRequestType): Promise<Order> {
     const data = await callMouser(limiter, () =>
@@ -258,7 +261,16 @@ export function registerOrderingTools(
       if (!preview || preview.state !== "pending") return fail(NO_LONGER_VALID);
       if (!canElicitForm(ctx)) return fail(NEEDS_PROMPT);
 
-      const responses = ctx.mcpReq.inputResponses;
+      // An answer counts only if it replies to the prompt this server issued
+      // for this preview: the signed state must name this preview and its
+      // latest prompt nonce. Anything else is treated as no answer at all.
+      const state = ctx.mcpReq.requestState<PromptState>();
+      const prompted =
+        state !== undefined &&
+        state.previewId === previewId &&
+        preview.promptNonces.has(state.nonce);
+
+      const responses = prompted ? ctx.mcpReq.inputResponses : undefined;
       const view = inputResponse(responses, "confirm");
       if (view.kind === "elicit" && view.action !== "accept") {
         previews.consume(previewId);
@@ -281,6 +293,8 @@ export function registerOrderingTools(
 
         if (answer === undefined) {
           const fresh = summarizeOrder(await previewOrder(preview.request));
+          const nonce = newNonce();
+          preview.promptNonces.add(nonce);
           return inputRequired({
             inputRequests: {
               confirm: inputRequired.elicit({
@@ -288,10 +302,15 @@ export function registerOrderingTools(
                 requestedSchema: WordSchema,
               }),
             },
+            requestState: await promptState.mint({ previewId, nonce }),
           });
         }
+      } catch (err) {
+        return toToolError(err);
+      }
 
-        if (!previews.consume(previewId)) return fail(NO_LONGER_VALID);
+      if (!previews.consume(previewId)) return fail(NO_LONGER_VALID);
+      try {
         const placed = await callMouser(limiter, () =>
           createOrder({
             client,
@@ -304,7 +323,10 @@ export function registerOrderingTools(
         };
         return ok(structured, JSON.stringify(structured));
       } catch (err) {
-        return toToolError(err);
+        // The submission may have reached Mouser even though we got no
+        // confirmation; never invite a blind retry that could order twice.
+        const reason = err instanceof Error ? err.message : String(err);
+        return fail(OUTCOME_UNKNOWN(reason));
       }
     },
   );

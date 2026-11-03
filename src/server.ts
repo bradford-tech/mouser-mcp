@@ -3,6 +3,7 @@ import { createRequire } from "node:module";
 import type { Limiter } from "./limiter.js";
 import type { MouserClient } from "./mouser.js";
 import type { PreviewStore } from "./previews.js";
+import type { PromptStateCodec } from "./prompt-state.js";
 import { registerCartTools } from "./tools/cart.js";
 import { registerOrderingTools } from "./tools/ordering.js";
 import { registerOrderInfoTools } from "./tools/orders.js";
@@ -18,6 +19,8 @@ export interface ServerDeps {
   limiter: Limiter;
   ordersEnabled: boolean;
   previews: PreviewStore;
+  /** Signs the state that ties an APPROVE answer to the prompt that asked for it. */
+  promptState: PromptStateCodec;
 }
 
 // package.json sits one level above both src/ (tests) and dist/ (published),
@@ -37,7 +40,10 @@ export const SERVER_INSTRUCTIONS = [
 export function createServer(deps: ServerDeps): McpServer {
   const server = new McpServer(
     { name: "mouser", version: SERVER_VERSION },
-    { instructions: SERVER_INSTRUCTIONS },
+    {
+      instructions: SERVER_INSTRUCTIONS,
+      requestState: { verify: deps.promptState.verify },
+    },
   );
   registerSearchTools(server, deps);
   registerCartTools(server, deps);
