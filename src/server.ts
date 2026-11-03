@@ -1,7 +1,9 @@
 import { McpServer } from "@modelcontextprotocol/server";
 import type { Limiter } from "./limiter.js";
 import type { MouserClient } from "./mouser.js";
+import type { PreviewStore } from "./previews.js";
 import { registerCartTools } from "./tools/cart.js";
+import { registerOrderingTools } from "./tools/ordering.js";
 import { registerOrderInfoTools } from "./tools/orders.js";
 import { registerSearchTools } from "./tools/search.js";
 
@@ -14,6 +16,7 @@ export interface ServerDeps {
   mouser: MouserClient;
   limiter: Limiter;
   ordersEnabled: boolean;
+  previews: PreviewStore;
 }
 
 export const SERVER_VERSION = "0.0.1";
@@ -34,5 +37,6 @@ export function createServer(deps: ServerDeps): McpServer {
   registerSearchTools(server, deps);
   registerCartTools(server, deps);
   registerOrderInfoTools(server, deps);
+  if (deps.ordersEnabled) registerOrderingTools(server, deps);
   return server;
 }

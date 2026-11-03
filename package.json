@@ -44,6 +44,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@modelcontextprotocol/client": "2.4.0",
+    "@types/node": "^20.19.43",
     "eslint": "^10.14.0",
     "eslint-config-flat-gitignore": "^2.4.0",
     "globals": "^17.14.0",

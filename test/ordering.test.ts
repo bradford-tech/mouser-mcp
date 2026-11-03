@@ -1,0 +1,253 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { PreviewStore } from "../src/previews.js";
+import { connect, type ElicitAnswer } from "./harness.js";
+import { mouserWithFetch } from "./helpers.js";
+
+type Structured = Record<string, unknown>;
+interface OrderBody {
+  Order: Record<string, unknown> & { SubmitOrder?: boolean };
+}
+
+/** An order request without its SubmitOrder flag, for preview/submit comparison. */
+function withoutSubmitFlag(order: OrderBody["Order"] | undefined) {
+  return Object.fromEntries(
+    Object.entries(order ?? {}).filter(([key]) => key !== "SubmitOrder"),
+  );
+}
+
+/**
+ * A fake Mouser order API. `cartQuantity` and `total` can be changed between
+ * calls to simulate a cart edited after preview or a re-priced order.
+ */
+function fakeMouser() {
+  const state = { cartQuantity: 10, total: 4.2 };
+  const orderBodies: OrderBody[] = [];
+  const { client, requests } = mouserWithFetch(async (req) => {
+    const { pathname } = new URL(req.url);
+    if (pathname === "/api/v1/cart") {
+      return {
+        CartKey: "cart-1",
+        CurrencyCode: "USD",
+        CartItems: [
+          { MouserPartNumber: "595-LM358DR", Quantity: state.cartQuantity },
+        ],
+      };
+    }
+    if (pathname === "/api/v1/order") {
+      const body = (await req.json()) as OrderBody;
+      orderBodies.push(body);
+      return {
+        Order: {
+          CurrencyCode: "USD",
+          MerchandiseTotal: state.total,
+          TaxAmount: 0,
+          OrderTotal: state.total,
+          ShippingMethod: { PrimaryMethod: "UPS Ground" },
+          OrderLines: [
+            {
+              MouserPartNumber: "595-LM358DR",
+              Quantity: state.cartQuantity,
+              UnitPrice: 0.42,
+              ExtendedPrice: state.total,
+            },
+          ],
+          ...(body.Order.SubmitOrder ? { OrderID: "WO-777" } : {}),
+        },
+      };
+    }
+    return new Response("not found", { status: 404 });
+  });
+  const submits = () => orderBodies.filter((b) => b.Order.SubmitOrder === true);
+  return { client, requests, state, orderBodies, submits };
+}
+
+function word(w: string) {
+  return (): ElicitAnswer => ({ action: "accept", content: { word: w } });
+}
+
+async function setup(
+  elicit?: (message: string) => ElicitAnswer,
+  previews = new PreviewStore(),
+) {
+  const mouser = fakeMouser();
+  const client = await connect(
+    { mouser: mouser.client, ordersEnabled: true, previews },
+    elicit ? { elicit } : {},
+  );
+  return { ...mouser, client };
+}
+
+async function preview(
+  client: Awaited<ReturnType<typeof setup>>["client"],
+): Promise<string> {
+  const result = await client.callTool({
+    name: "preview_order",
+    arguments: { cartKey: "cart-1", currencyCode: "USD" },
+  });
+  assert.equal(result.isError, undefined, JSON.stringify(result.content));
+  return (result.structuredContent as Structured).previewId as string;
+}
+
+function text(result: { content?: unknown }): string {
+  return JSON.stringify(result.content);
+}
+
+test("ordering tools are only listed when enabled", async () => {
+  const off = await connect({ mouser: fakeMouser().client });
+  const offNames = (await off.listTools()).tools.map((t) => t.name);
+  assert.equal(offNames.includes("preview_order"), false);
+  assert.equal(offNames.includes("submit_order"), false);
+  const { client } = await setup(word("APPROVE"));
+  const onNames = (await client.listTools()).tools.map((t) => t.name);
+  assert.ok(
+    onNames.includes("preview_order") && onNames.includes("submit_order"),
+  );
+});
+
+test("submit_order takes previewId and nothing else", async () => {
+  const { client } = await setup(word("APPROVE"));
+  const tool = (await client.listTools()).tools.find(
+    (t) => t.name === "submit_order",
+  );
+  assert.deepEqual(Object.keys(tool?.inputSchema.properties ?? {}), [
+    "previewId",
+  ]);
+  assert.equal(tool?.annotations?.destructiveHint, true);
+  assert.equal(tool?.annotations?.idempotentHint, false);
+  assert.equal(tool?._meta?.["anthropic/requiresUserInteraction"], true);
+});
+
+test("preview_order asks Mouser for a preview only", async () => {
+  const { client, orderBodies } = await setup(word("APPROVE"));
+  await preview(client);
+  assert.equal(orderBodies.length, 1);
+  assert.equal(orderBodies[0]?.Order.SubmitOrder, false);
+  assert.equal(orderBodies[0]?.Order.CartKey, "cart-1");
+});
+
+for (const typed of ["APPROVE", '"APPROVE"', " approve "]) {
+  test(`typing ${JSON.stringify(typed)} submits exactly the previewed request once`, async () => {
+    const { client, orderBodies, submits } = await setup(word(typed));
+    const previewId = await preview(client);
+    const result = await client.callTool({
+      name: "submit_order",
+      arguments: { previewId },
+    });
+    assert.equal(result.isError, undefined, text(result));
+    assert.equal(submits().length, 1);
+    assert.deepEqual(
+      withoutSubmitFlag(submits()[0]?.Order),
+      withoutSubmitFlag(orderBodies[0]?.Order),
+    );
+    assert.ok(Object.keys(withoutSubmitFlag(submits()[0]?.Order)).length > 0);
+    assert.equal(
+      (result.structuredContent as Structured).orderNumber,
+      "WO-777",
+    );
+  });
+}
+
+for (const typed of ["APPROV", "yep looks good", "approve!"]) {
+  test(`typing ${JSON.stringify(typed)} submits nothing and spends the preview`, async () => {
+    const { client, submits } = await setup(word(typed));
+    const previewId = await preview(client);
+    const result = await client.callTool({
+      name: "submit_order",
+      arguments: { previewId },
+    });
+    assert.equal(result.isError, true);
+    assert.match(text(result), /nothing was submitted/i);
+    assert.equal(submits().length, 0);
+    const again = await client.callTool({
+      name: "submit_order",
+      arguments: { previewId },
+    });
+    assert.equal(again.isError, true);
+    assert.match(text(again), /no longer valid/i);
+  });
+}
+
+test("declining the prompt submits nothing", async () => {
+  const { client, submits } = await setup(() => ({ action: "decline" }));
+  const previewId = await preview(client);
+  const result = await client.callTool({
+    name: "submit_order",
+    arguments: { previewId },
+  });
+  assert.equal(result.isError, true);
+  assert.equal(submits().length, 0);
+});
+
+test("a client without confirmation prompts gets an error and no Mouser calls", async () => {
+  const previews = new PreviewStore();
+  const capable = await setup(word("APPROVE"), previews);
+  const previewId = await preview(capable.client);
+  const incapable = fakeMouser();
+  const client = await connect({
+    mouser: incapable.client,
+    ordersEnabled: true,
+    previews,
+  });
+  const result = await client.callTool({
+    name: "submit_order",
+    arguments: { previewId },
+  });
+  assert.equal(result.isError, true);
+  assert.match(text(result), /Claude Code/);
+  assert.equal(incapable.requests.length, 0);
+});
+
+test("a cart changed after preview invalidates it", async () => {
+  const { client, state, submits } = await setup(word("APPROVE"));
+  const previewId = await preview(client);
+  state.cartQuantity = 25;
+  const result = await client.callTool({
+    name: "submit_order",
+    arguments: { previewId },
+  });
+  assert.equal(result.isError, true);
+  assert.match(text(result), /cart changed/i);
+  assert.equal(submits().length, 0);
+});
+
+test("the prompt shows fresh figures and flags a changed total", async () => {
+  const messages: string[] = [];
+  const { client, state } = await setup((message) => {
+    messages.push(message);
+    return { action: "decline" };
+  });
+  const previewId = await preview(client);
+  state.total = 5.1;
+  await client.callTool({ name: "submit_order", arguments: { previewId } });
+  assert.equal(messages.length, 1);
+  assert.match(messages[0] ?? "", /Total changed since preview/);
+  assert.match(messages[0] ?? "", /4\.2/);
+  assert.match(messages[0] ?? "", /5\.1/);
+});
+
+test("two concurrent submits of one preview place one order", async () => {
+  const { client, submits } = await setup(word("APPROVE"));
+  const previewId = await preview(client);
+  const results = await Promise.all([
+    client.callTool({ name: "submit_order", arguments: { previewId } }),
+    client.callTool({ name: "submit_order", arguments: { previewId } }),
+  ]);
+  assert.equal(submits().length, 1);
+  assert.equal(results.filter((r) => r.isError === true).length, 1);
+});
+
+test("an expired preview can't be submitted", async () => {
+  let now = 1_000_000;
+  const previews = new PreviewStore({ now: () => now });
+  const { client, submits } = await setup(word("APPROVE"), previews);
+  const previewId = await preview(client);
+  now += 21 * 60_000;
+  const result = await client.callTool({
+    name: "submit_order",
+    arguments: { previewId },
+  });
+  assert.equal(result.isError, true);
+  assert.match(text(result), /no longer valid/i);
+  assert.equal(submits().length, 0);
+});

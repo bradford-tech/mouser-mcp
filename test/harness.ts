@@ -5,6 +5,7 @@ import {
 import { createMcpHandler } from "@modelcontextprotocol/server";
 import { createLimiter } from "../src/limiter.js";
 import type { MouserClient } from "../src/mouser.js";
+import { PreviewStore } from "../src/previews.js";
 import { createServer, type ServerDeps } from "../src/server.js";
 
 export type ElicitAnswer =
@@ -25,6 +26,7 @@ export async function connect(
   const full: ServerDeps = {
     limiter: createLimiter({ sleep: () => Promise.resolve() }),
     ordersEnabled: false,
+    previews: new PreviewStore(),
     ...deps,
   };
   const handler = createMcpHandler(() => createServer(full));
