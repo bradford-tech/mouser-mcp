@@ -8,9 +8,15 @@ import {
 } from "@bradford-tech/mouser-sdk";
 import type { McpServer } from "@modelcontextprotocol/server";
 import * as z from "zod/v4";
-import { callMouser, toToolError, type MouserClient } from "../mouser.js";
+import { DailyLimitError } from "../limiter.js";
+import {
+  callMouser,
+  MouserError,
+  toToolError,
+  type MouserClient,
+} from "../mouser.js";
 import { PartSummarySchema, summarizePart } from "../parts.js";
-import { ok } from "../results.js";
+import { fail, ok } from "../results.js";
 import type { ServerDeps } from "../server.js";
 
 const READ_ONLY = {
@@ -137,6 +143,9 @@ export function registerSearchTools(server: McpServer, deps: ServerDeps): void {
       outputSchema: z.object({
         parts: z.array(PartSummarySchema),
         notFound: z.array(z.string()),
+        failed: z.array(
+          z.object({ partNumbers: z.array(z.string()), error: z.string() }),
+        ),
       }),
       annotations: {
         title: "Look up Mouser parts by part number",
@@ -144,13 +153,18 @@ export function registerSearchTools(server: McpServer, deps: ServerDeps): void {
       },
     },
     async ({ partNumbers, exact, manufacturer }) => {
-      try {
-        const partSearchOptions = exact ? "Exact" : "None";
-        const found: MouserPart[] = [];
-        for (let i = 0; i < partNumbers.length; i += PART_NUMBERS_PER_CALL) {
-          const mouserPartNumber = partNumbers
-            .slice(i, i + PART_NUMBERS_PER_CALL)
-            .join("|");
+      const partSearchOptions = exact ? "Exact" : "None";
+      const found: MouserPart[] = [];
+      const failed: { partNumbers: string[]; error: string }[] = [];
+      const batches: string[][] = [];
+      for (let i = 0; i < partNumbers.length; i += PART_NUMBERS_PER_CALL) {
+        batches.push(partNumbers.slice(i, i + PART_NUMBERS_PER_CALL));
+      }
+      // A failed batch shouldn't discard the rest of a BOM: report it and keep
+      // going. Once the daily limit is hit, every remaining batch fails too.
+      for (const [index, batch] of batches.entries()) {
+        const mouserPartNumber = batch.join("|");
+        try {
           const data = manufacturer
             ? await callMouser(limiter, () =>
                 searchByPartNumberAndManufacturer({
@@ -176,22 +190,38 @@ export function registerSearchTools(server: McpServer, deps: ServerDeps): void {
                 }),
               );
           found.push(...(data.SearchResults?.Parts ?? []));
+        } catch (err) {
+          if (err instanceof DailyLimitError) {
+            for (const rest of batches.slice(index)) {
+              failed.push({ partNumbers: rest, error: err.message });
+            }
+            break;
+          }
+          if (!(err instanceof MouserError)) throw err;
+          failed.push({ partNumbers: batch, error: err.message });
         }
-        const known = new Set(
-          found.flatMap((p) =>
-            [p.MouserPartNumber, p.ManufacturerPartNumber]
-              .filter((pn): pn is string => Boolean(pn))
-              .map((pn) => pn.toLowerCase()),
-          ),
-        );
-        const structured = {
-          parts: found.map((p) => summarizePart(p)),
-          notFound: partNumbers.filter((pn) => !known.has(pn.toLowerCase())),
-        };
-        return ok(structured, JSON.stringify(structured));
-      } catch (err) {
-        return toToolError(err);
       }
+      const known = new Set(
+        found.flatMap((p) =>
+          [p.MouserPartNumber, p.ManufacturerPartNumber]
+            .filter((pn): pn is string => Boolean(pn))
+            .map((pn) => pn.toLowerCase()),
+        ),
+      );
+      const unanswered = new Set(failed.flatMap((f) => f.partNumbers));
+      const structured = {
+        parts: found.map((p) => summarizePart(p)),
+        notFound: partNumbers.filter(
+          (pn) => !unanswered.has(pn) && !known.has(pn.toLowerCase()),
+        ),
+        failed,
+      };
+      if (found.length === 0 && failed.length === batches.length) {
+        return fail(
+          `No part numbers could be looked up: ${failed[0]?.error ?? "unknown error"}`,
+        );
+      }
+      return ok(structured, JSON.stringify(structured));
     },
   );
 

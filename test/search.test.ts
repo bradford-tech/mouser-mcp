@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { createLimiter } from "../src/limiter.js";
 import { part } from "./fixtures.js";
 import { connect, json } from "./harness.js";
 import { mouserWithFetch } from "./helpers.js";
@@ -218,4 +219,68 @@ test("get_parts returns full detail, search_parts the lighter summary", async ()
     "https://www.mouser.com/datasheet/2/405/lm358.pdf",
   );
   assert.equal(searchPart?.datasheetUrl, undefined);
+});
+
+test("get_parts keeps results from good batches when one batch fails", async () => {
+  const pns = Array.from(
+    { length: 25 },
+    (_, i) => `PN-${String(i).padStart(3, "0")}`,
+  );
+  let call = 0;
+  const { client: mouser } = mouserWithFetch(async (req) => {
+    call++;
+    if (call === 2) return { Errors: [{ Message: "Service busy" }] };
+    const body = (await req.json()) as {
+      SearchByPartRequest: { mouserPartNumber: string };
+    };
+    const asked = body.SearchByPartRequest.mouserPartNumber.split("|");
+    return {
+      SearchResults: {
+        NumberOfResult: asked.length,
+        Parts: asked.map((pn) =>
+          part({ MouserPartNumber: `595-${pn}`, ManufacturerPartNumber: pn }),
+        ),
+      },
+    };
+  });
+  const client = await connect({ mouser });
+  const result = await client.callTool({
+    name: "get_parts",
+    arguments: { partNumbers: pns },
+  });
+  assert.equal(result.isError, undefined);
+  const structured = result.structuredContent as Structured;
+  assert.equal((structured.parts as unknown[]).length, 15);
+  assert.deepEqual(structured.notFound, []);
+  assert.deepEqual(structured.failed, [
+    { partNumbers: pns.slice(10, 20), error: "Service busy" },
+  ]);
+});
+
+test("get_parts reports every remaining batch as failed once the daily limit is hit", async () => {
+  const { client: mouser } = mouserWithFetch(() => ({
+    SearchResults: { NumberOfResult: 0, Parts: [] },
+  }));
+  const client = await connect({
+    mouser,
+    limiter: createLimiter({ sleep: () => Promise.resolve(), perDay: 1 }),
+  });
+  const pns = Array.from({ length: 25 }, (_, i) => `PART-${i}`);
+  const result = await client.callTool({
+    name: "get_parts",
+    arguments: { partNumbers: pns },
+  });
+  const failed = (result.structuredContent as Structured).failed as {
+    partNumbers: string[];
+    error: string;
+  }[];
+  assert.deepEqual(
+    failed.map((f) => f.partNumbers.length),
+    [10, 5],
+  );
+  assert.match(failed[0]?.error ?? "", /daily API limit/);
+  assert.equal(
+    ((result.structuredContent as Structured).notFound as string[]).length,
+    10,
+  );
 });
