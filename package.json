@@ -1,6 +1,6 @@
 {
   "name": "@bradford-tech/mouser-mcp",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "MCP server for the Mouser Electronics API: part search, BOM review, carts and confirmed ordering",
   "keywords": [
     "mouser",
