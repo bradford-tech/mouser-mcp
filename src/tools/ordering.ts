@@ -259,7 +259,7 @@ export function registerOrderingTools(
     async ({ previewId }, ctx) => {
       const preview = previews.get(previewId);
       if (!preview || preview.state !== "pending") return fail(NO_LONGER_VALID);
-      if (!canElicitForm(ctx)) return fail(NEEDS_PROMPT);
+      if (!canElicitForm(server, ctx)) return fail(NEEDS_PROMPT);
 
       // An answer counts only if it replies to the prompt this server issued
       // for this preview: the signed state must name this preview and its
