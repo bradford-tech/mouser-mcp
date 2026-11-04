@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.5](https://github.com/bradford-tech/mouser-mcp/compare/mouser-mcp-v0.0.4...mouser-mcp-v0.0.5) (2026-11-04)
+
+
+### Bug Fixes
+
+* say datasheet links appear only when Mouser provides them ([3771cda](https://github.com/bradford-tech/mouser-mcp/commit/3771cda7b851aadb1e5a127c6f226abd3bd87da3))
+
 ## [0.0.4](https://github.com/bradford-tech/mouser-mcp/compare/mouser-mcp-v0.0.3...mouser-mcp-v0.0.4) (2026-11-03)
 
 
