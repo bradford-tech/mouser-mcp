@@ -127,7 +127,7 @@ export function registerSearchTools(server: McpServer, deps: ServerDeps): void {
     {
       title: "Look up Mouser parts by part number",
       description:
-        "Looks up one or many Mouser or manufacturer part numbers (up to 200, e.g. a BOM) and returns compact summaries: stock, lead time, lifecycle, RoHS, pricing, compliance and links. Part numbers that match nothing are listed in notFound. Lookups are batched 10 per Mouser call.",
+        "Looks up one or many Mouser or manufacturer part numbers (up to 200, e.g. a BOM) and returns compact summaries: stock, lead time, lifecycle, RoHS, pricing, compliance and links. Part numbers that match nothing are listed in notFound. Lookups are batched 10 per Mouser call. datasheetUrl is included only when Mouser provides one, which it often doesn't; productUrl links to the Mouser page, which has the datasheet.",
       inputSchema: z.object({
         partNumbers: z.array(z.string().min(3).max(40)).min(1).max(200),
         exact: z
