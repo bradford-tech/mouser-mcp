@@ -19,9 +19,9 @@ export function part(overrides: Partial<MouserPart> = {}): MouserPart {
     MouserPartNumber: "595-LM358DR",
     ProductAttributes: [{ AttributeName: "Packaging", AttributeValue: "Reel" }],
     PriceBreaks: [
-      { Quantity: 1, Price: "$0.42", Currency: "USD" },
-      { Quantity: 10, Price: "$0.31", Currency: "USD" },
-      { Quantity: 2500, Price: "$0.12", Currency: "USD" },
+      { Quantity: 1, Price: "$0.42", RawPrice: 0.42, Currency: "USD" },
+      { Quantity: 10, Price: "$0.31", RawPrice: 0.31, Currency: "USD" },
+      { Quantity: 2500, Price: "$0.12", RawPrice: 0.12, Currency: "USD" },
     ],
     ProductDetailUrl: "https://www.mouser.com/ProductDetail/595-LM358DR",
     Reeling: true,

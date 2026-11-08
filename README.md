@@ -56,7 +56,7 @@ Requires Node 20 or newer.
 Things to know:
 
 - **No parametric search.** Mouser can't filter or sort by specifications (capacitance, voltage, price). Search by keyword; Claude filters the returned descriptions.
-- **Price breaks.** Mouser returns a handful of price breaks per part; quantities above the last break are priced at that break, not extrapolated.
+- **Price breaks.** Mouser returns a handful of price breaks per part; quantities above the last break are priced at that break, not extrapolated. Each break has a display `price` string and a numeric `rawPrice` for arithmetic.
 - **Search results are lighter than lookups.** `search_parts` leaves out links, on-order dates and compliance codes to keep pages small; `get_parts` returns them.
 - **Datasheet links** come back only when Mouser's API provides them, and for many parts (e.g. TI and onsemi) it returns an empty value. The product page link always works and links the datasheet.
 - **Dates** are returned as Mouser sends them (e.g. `2026-11-06T00:00:00`, no timezone).

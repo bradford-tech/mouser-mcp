@@ -39,6 +39,7 @@ export const PartSummarySchema = z.object({
       z.object({
         quantity: z.number().optional(),
         price: z.string().optional(),
+        rawPrice: z.number().optional(),
         currency: z.string().optional(),
       }),
     )
@@ -138,6 +139,7 @@ function fullSummary(p: MouserPart): PartSummary {
         compact({
           quantity: b.Quantity,
           price: text(b.Price),
+          rawPrice: b.RawPrice ?? undefined,
           currency: text(b.Currency),
         }),
       ),

@@ -23,9 +23,9 @@ test("summarizes a Mouser part into the compact shape", () => {
     orderMultiple: 1,
     reeling: true,
     priceBreaks: [
-      { quantity: 1, price: "$0.42", currency: "USD" },
-      { quantity: 10, price: "$0.31", currency: "USD" },
-      { quantity: 2500, price: "$0.12", currency: "USD" },
+      { quantity: 1, price: "$0.42", rawPrice: 0.42, currency: "USD" },
+      { quantity: 10, price: "$0.31", rawPrice: 0.31, currency: "USD" },
+      { quantity: 2500, price: "$0.12", rawPrice: 0.12, currency: "USD" },
     ],
     compliance: { USHTS: "8542330001", ECCN: "EAR99" },
   });
