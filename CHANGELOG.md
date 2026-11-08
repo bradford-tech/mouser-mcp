@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.0.6](https://github.com/bradford-tech/mouser-mcp/compare/mouser-mcp-v0.0.5...mouser-mcp-v0.0.6) (2026-11-08)
+
+
+### Features
+
+* add numeric rawPrice to part price breaks ([25c2708](https://github.com/bradford-tech/mouser-mcp/commit/25c2708b73bc9ac5ec882991443e327bbab3c4dd))
+
+
+### Bug Fixes
+
+* **deps:** bump mouser-sdk to ~0.0.3 and zod to ^4.6.7 ([bdadcff](https://github.com/bradford-tech/mouser-mcp/commit/bdadcff7e05b8171d860e7da7cb0effaca1a7e24))
+
 ## [0.0.5](https://github.com/bradford-tech/mouser-mcp/compare/mouser-mcp-v0.0.4...mouser-mcp-v0.0.5) (2026-11-04)
 
 
